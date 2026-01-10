@@ -21,21 +21,91 @@
 var CONFIG = {
     exportPPI: 1400,
 
-    // Mapping from card thickness (layer name) to template size group AND exterior size
+    // Mapping from layer name to template size group AND exterior size with bleed
     // Exterior dimensions in points (converted from mm: 1mm = 2.8346pts)
-    // Width: 30mm = 85.04pts, Heights vary by card thickness
+    //
+    // Supports three naming conventions:
+    // 1. Card thickness (e.g., "35", "55") - One Touch sizes
+    // 2. WxH dimensions (e.g., "54x72", "76x102") - Any product type
+    // 3. Friendly names (e.g., "toploader-narrow", "one-touch-35")
     sizeMapping: {
+        // === ONE TOUCH sizes (by card thickness in pt) ===
+        // Width: 30mm = 85.04pts, Heights vary by card thickness
         "35":  { sizeGroup: "79x90",  bleedWidth: 85.04, bleedHeight: 95.67 },   // 30mm x 33.75mm
         "55":  { sizeGroup: "79x91",  bleedWidth: 85.04, bleedHeight: 97.09 },   // 30mm x 34.25mm
         "75":  { sizeGroup: "79x94",  bleedWidth: 85.04, bleedHeight: 99.21 },   // 30mm x 35mm
         "100": { sizeGroup: "79x95",  bleedWidth: 85.04, bleedHeight: 100.63 },  // 30mm x 35.5mm
         "130": { sizeGroup: "79x98",  bleedWidth: 85.04, bleedHeight: 103.46 },  // 30mm x 36.5mm
-        "180": { sizeGroup: "79x101", bleedWidth: 85.04, bleedHeight: 106.30 }   // 30mm x 37.5mm
+        "180": { sizeGroup: "79x101", bleedWidth: 85.04, bleedHeight: 106.30 },  // 30mm x 37.5mm
+
+        // === TOPLOADER sizes (by slot dimensions in pts) ===
+        // Narrow: 54x72pt slot + 6pt bleed (3pt each side)
+        "54x72":  { sizeGroup: "54x72",  bleedWidth: 60, bleedHeight: 78, templateGroup: "Top Loader" },
+        "toploader-narrow": { sizeGroup: "54x72",  bleedWidth: 60, bleedHeight: 78, templateGroup: "Top Loader" },
+
+        // Wide: 76x102pt slot + 6pt bleed (3pt each side)
+        "76x102": { sizeGroup: "76x102", bleedWidth: 82, bleedHeight: 108, templateGroup: "Top Loader" },
+        "toploader-wide": { sizeGroup: "76x102", bleedWidth: 82, bleedHeight: 108, templateGroup: "Top Loader" }
     },
 
     // Patterns to identify cut contour elements (case insensitive)
     cutContourPatterns: ["cutcontour", "cut contour", "dieline", "die line", "diecut", "die cut", "kiss cut", "kisscut", "contour", "thru-cut", "thru cut", "throughcut", "through cut", "perf", "score"]
 };
+
+
+/**
+ * Detect product type from layer names in the document.
+ * Returns: "onetouch", "toploader-narrow", "toploader-wide", or null
+ */
+function detectProductType(doc) {
+    var hasOneTouch = false;
+    var hasTopLoaderNarrow = false;
+    var hasTopLoaderWide = false;
+
+    // One Touch layer names (card thickness)
+    var oneTouchLayers = ["35", "55", "75", "100", "130", "180"];
+    // One Touch size patterns (79xNN)
+    var oneTouchPattern = /^79x\d+$/;
+
+    for (var i = 0; i < doc.layers.length; i++) {
+        var layerName = doc.layers[i].name.replace(/^\s+|\s+$/g, '').toLowerCase();
+
+        // Check for One Touch
+        for (var j = 0; j < oneTouchLayers.length; j++) {
+            if (layerName === oneTouchLayers[j]) {
+                hasOneTouch = true;
+                break;
+            }
+        }
+        if (oneTouchPattern.test(layerName)) {
+            hasOneTouch = true;
+        }
+
+        // Check for Toploader Narrow
+        if (layerName === "54x72" || layerName === "toploader-narrow" || layerName === "toploader_narrow") {
+            hasTopLoaderNarrow = true;
+        }
+
+        // Check for Toploader Wide
+        if (layerName === "76x102" || layerName === "toploader-wide" || layerName === "toploader_wide") {
+            hasTopLoaderWide = true;
+        }
+    }
+
+    // Return detected type (prioritize more specific detections)
+    if (hasTopLoaderNarrow && !hasTopLoaderWide && !hasOneTouch) {
+        return "toploader-narrow";
+    }
+    if (hasTopLoaderWide && !hasTopLoaderNarrow && !hasOneTouch) {
+        return "toploader-wide";
+    }
+    if (hasOneTouch && !hasTopLoaderNarrow && !hasTopLoaderWide) {
+        return "onetouch";
+    }
+    // Mixed or unknown - return null (no suffix)
+    return null;
+}
+
 
 (function() {
     if (app.documents.length === 0) {
@@ -57,6 +127,10 @@ var CONFIG = {
         return;
     }
 
+    // Detect product type from layers BEFORE creating folders
+    var detectedProductType = detectProductType(doc);
+    var productSuffix = detectedProductType ? "-" + detectedProductType : "";
+
     // Extract root folder name (everything before the dash, or full number if no dash)
     var rootFolder = proofNumber.split("-")[0];
 
@@ -66,7 +140,9 @@ var CONFIG = {
         outputFolder.create();
     }
 
-    var exportFolder = new Folder(outputFolder.fsName + "/" + proofNumber + "_exports");
+    // Include product type in export folder name to prevent overwrites
+    var exportFolderName = proofNumber + productSuffix + "_exports";
+    var exportFolder = new Folder(outputFolder.fsName + "/" + exportFolderName);
     if (!exportFolder.exists) {
         exportFolder.create();
     }
@@ -81,14 +157,15 @@ var CONFIG = {
 
     // Auto-zip the folder
     if (result.exported > 0) {
-        var zipPath = outputFolder.fsName + "/" + proofNumber + "_exports.zip";
+        var zipPath = outputFolder.fsName + "/" + proofNumber + productSuffix + "_exports.zip";
         var zipCreated = createZip(exportFolder.fsName, zipPath);
 
         // Save PDF copy of the master artwork
-        var pdfPath = outputFolder.fsName + "/" + proofNumber + "-MasterArtwork.pdf";
+        var pdfPath = outputFolder.fsName + "/" + proofNumber + productSuffix + "-MasterArtwork.pdf";
         var pdfSaved = savePDF(doc, pdfPath);
 
-        var msg = "Exported " + result.exported + " artworks.\n\n";
+        var msg = "Exported " + result.exported + " artworks.\n";
+        msg += "Product type: " + (detectedProductType || "auto") + "\n\n";
         if (zipCreated) {
             msg += "ZIP: " + zipPath + "\n";
         } else {
