@@ -39,13 +39,13 @@ var CONFIG = {
         "180": { sizeGroup: "79x101", bleedWidth: 85.04, bleedHeight: 106.30 },  // 30mm x 37.5mm
 
         // === TOPLOADER sizes (by slot dimensions in pts) ===
-        // Narrow: 54x72pt slot + 6pt bleed (3pt each side)
-        "54x72":  { sizeGroup: "54x72",  bleedWidth: 60, bleedHeight: 78, templateGroup: "Top Loader" },
-        "toploader-narrow": { sizeGroup: "54x72",  bleedWidth: 60, bleedHeight: 78, templateGroup: "Top Loader" },
+        // Narrow: 54x72pt slot + 3pt bleed (1.5pt each side) - matches slot spacing of ~56.7pt
+        "54x72":  { sizeGroup: "54x72",  bleedWidth: 57, bleedHeight: 75, templateGroup: "Top Loader" },
+        "toploader-narrow": { sizeGroup: "54x72",  bleedWidth: 57, bleedHeight: 75, templateGroup: "Top Loader" },
 
-        // Wide: 76x102pt slot + 6pt bleed (3pt each side)
-        "76x102": { sizeGroup: "76x102", bleedWidth: 82, bleedHeight: 108, templateGroup: "Top Loader" },
-        "toploader-wide": { sizeGroup: "76x102", bleedWidth: 82, bleedHeight: 108, templateGroup: "Top Loader" }
+        // Wide: 76x102pt slot + 3pt bleed (1.5pt each side)
+        "76x102": { sizeGroup: "76x102", bleedWidth: 79, bleedHeight: 105, templateGroup: "Top Loader" },
+        "toploader-wide": { sizeGroup: "76x102", bleedWidth: 79, bleedHeight: 105, templateGroup: "Top Loader" }
     },
 
     // Patterns to identify cut contour elements (case insensitive)
