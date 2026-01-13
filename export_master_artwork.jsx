@@ -45,6 +45,7 @@ var CONFIG = {
 
         // Wide: 76x102pt slot + 3pt bleed (1.5pt each side)
         "76x102": { sizeGroup: "76x102", bleedWidth: 79, bleedHeight: 105, templateGroup: "Top Loader" },
+        "64x79": { sizeGroup: "64x79", bleedWidth: 67, bleedHeight: 82, templateGroup: "Top Loader" },
         "toploader-wide": { sizeGroup: "76x102", bleedWidth: 79, bleedHeight: 105, templateGroup: "Top Loader" }
     },
 
@@ -87,7 +88,7 @@ function detectProductType(doc) {
         }
 
         // Check for Toploader Wide
-        if (layerName === "76x102" || layerName === "toploader-wide" || layerName === "toploader_wide") {
+        if (layerName === "76x102" || layerName === "64x79" || layerName === "toploader-wide" || layerName === "toploader_wide") {
             hasTopLoaderWide = true;
         }
     }
